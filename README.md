@@ -46,7 +46,7 @@ Feed it an array of files with in a target:
 Using in F#
 -----------
 
- Create an F# console app and add 15below.NUnitMerger.dll, System.Xml and System.Xml.Linq as references.
+Create an F# console app and add 15below.NUnitMerger.dll, System.Xml and System.Xml.Linq as references.
 
 ```fsharp
 open FifteenBelow.NUnitMerger.Core
@@ -70,7 +70,7 @@ myFiles
 ## Why?
 
 We run a lot of parallelisable tests as part of our build. Some recursive MSBuild trickery later,
-we had all are test dlls running in parallel, exporting seperate test results for each assembly:
+we had all our test dlls running in parallel, exporting seperate test results for each assembly:
 
 ```xml
   <Target Name="UnitTestDll">
