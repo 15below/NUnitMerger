@@ -43,7 +43,8 @@ Feed it an array of files with in a target:
 
  Find the resulting combined results at OutputPath.
 
- ## Using in F#
+Using in F#
+-----------
 
  Create an F# console app and add 15below.NUnitMerger.dll, System.Xml and System.Xml.Linq as references.
 
