@@ -5,7 +5,7 @@ working as painlessly as possible.
 
 ## The short version
 
-Pull and build the solution in Visual Studio 2012. Reference the resulting dll from msbuild or
+Pull and build the solution in Visual Studio 2010. Reference the resulting dll from msbuild or
 as a reference from any .net project and feed it a collection of NUnit test result files.
 
 Watch one combined file emerge as a result.
