@@ -98,7 +98,9 @@ let TestProjectSummary assemblies =
 let CreateTestProjectNode assemblies =
     let result, time, asserts = TestProjectSummary assemblies
     let projectEl = XElement.Parse (sprintf "<test-suite type=\"Test Project\" name=\"\" executed=\"True\" result=\"%s\" time=\"%f\" asserts=\"%d\" />" result time asserts)
-    projectEl.Add (assemblies |> Seq.toArray)
+    let results = XElement.Parse ("<results/>")
+    results.Add (assemblies |> Seq.toArray)
+    projectEl.Add results
     projectEl
 
 let MergeTestSummary agg summary =
