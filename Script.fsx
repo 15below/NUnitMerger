@@ -8,9 +8,9 @@ open FifteenBelow.NUnitMerger.Core
 open System.IO
 open System.Xml.Linq
 
-Directory.GetFiles (@"d:\MJN\Source\build\scripts\TestResults", "*.xml")
-|> Seq.take 3
-|> Seq.map File.ReadAllText
-|> Seq.map XDocument.Parse
-|> AllSucceeded
-|> printfn "%A"
+let resultsDoc =
+    Directory.GetFiles (@"d:\MJN\Source\build\scripts\TestResults", "*.xml")
+    |> Seq.map File.ReadAllText
+    |> Seq.map (fun x -> XDocument.Parse x)
+    |> FoldDocs
+    |> CreateMerged

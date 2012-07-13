@@ -82,6 +82,25 @@ let GetCulture (xDoc : XDocument) =
 let CreateCulture culture =
     XElement.Parse (sprintf "<culture-info current-culture=\"%s\" current-uiculture=\"%s\" />" culture.currentculture culture.currentuiculture)
 
+let FoldAssemblyToProjectTuple agg (assembly : XElement) =
+    let result, time, asserts = agg
+    let outResult =
+        if assembly.Attribute(!!"result").Value = "Failure" then "Failure" 
+        elif assembly.Attribute(!!"result").Value = "Inconclusive" && result = "Success" then "Inconclusive"
+        else result
+    (outResult, time + Convert.ToDouble (assembly.Attribute(!!"time").Value), asserts + Convert.ToInt32 (assembly.Attribute(!!"asserts").Value))
+    
+
+let TestProjectSummary assemblies =
+    assemblies
+    |> Seq.fold FoldAssemblyToProjectTuple ("Success", 0.0, 0)
+
+let CreateTestProjectNode assemblies =
+    let result, time, asserts = TestProjectSummary assemblies
+    let projectEl = XElement.Parse (sprintf "<test-suite type=\"Test Project\" name=\"\" executed=\"True\" result=\"%s\" time=\"%f\" asserts=\"%d\" />" result time asserts)
+    projectEl.Add (assemblies |> Seq.toArray)
+    projectEl
+
 let MergeTestSummary agg summary =
     { agg with 
         total = agg.total + summary.total
@@ -116,7 +135,7 @@ let FoldDocs docs =
 let CreateMerged state =
     let summary, environment, culture, assemblies = state
     let results = (CreateTestSummaryElement summary)
-    results.Add (Seq.append [CreateEnvironment environment;CreateCulture culture;] assemblies |> Seq.toArray)
+    results.Add [CreateEnvironment environment;CreateCulture culture;CreateTestProjectNode assemblies]
     results
 
 let WriteMergedNunitResults (directory, filter, outfile) =
