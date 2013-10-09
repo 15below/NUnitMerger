@@ -131,7 +131,7 @@ let Folder state xDoc =
     (MergeTestSummary (GetTestSummary xDoc) summary, environment, culture, Seq.append assemblies (GetTestAssemblies xDoc))
 
 let FoldDocs docs =
-    let state = (Seq.head docs |> GetTestSummary, Seq.head docs |> GetEnvironment, Seq.head docs |> GetCulture, Seq.head docs |> GetTestAssemblies)
+    let state = (Seq.head docs |> GetTestSummary, Seq.head docs |> GetEnvironment, Seq.head docs |> GetCulture, Seq.empty)
     Seq.fold Folder state docs
 
 let CreateMerged state =
