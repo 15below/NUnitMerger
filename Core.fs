@@ -8,6 +8,28 @@ open System.Xml.Linq
 let inline (!!) arg =
   ( ^a : (static member op_Implicit : ^b -> ^a) arg)
 
+type culture =
+    {
+        currentculture : System.Globalization.CultureInfo
+        currentuiculture : string
+    }
+
+let GetCulture (xDoc : XDocument) =
+    let culture = xDoc.Element(!!"test-results").Element(!!"culture-info")
+    {
+        currentculture = System.Globalization.CultureInfo(culture.Attribute(!!"current-culture").Value)
+        currentuiculture = culture.Attribute(!!"current-uiculture").Value
+    }
+
+let CreateCulture culture =
+    XElement.Parse (sprintf "<culture-info current-culture=\"%s\" current-uiculture=\"%s\" />" culture.currentculture.Name culture.currentuiculture)
+
+let getInt culture intStr =
+    Convert.ToInt32(intStr, culture.currentculture.NumberFormat)
+
+let getDouble culture doubleStr =
+    Convert.ToDouble(doubleStr, culture.currentculture.NumberFormat)
+
 type ResultSummary =
     {
         total : int
@@ -21,17 +43,17 @@ type ResultSummary =
         datetime : DateTime
     }
 
-let GetTestSummary (xDoc : XDocument) =
+let GetTestSummary culture (xDoc : XDocument) =
     let tr = xDoc.Element(!!"test-results")
     {
-        total = tr.Attribute(!!"total").Value |> Convert.ToInt32
-        errors = tr.Attribute(!!"errors").Value |> Convert.ToInt32
-        failures = tr.Attribute(!!"failures").Value |> Convert.ToInt32
-        notrun = tr.Attribute(!!"not-run").Value |> Convert.ToInt32 
-        inconclusive = tr.Attribute(!!"inconclusive").Value |> Convert.ToInt32
-        ignored = tr.Attribute(!!"ignored").Value |> Convert.ToInt32
-        skipped = tr.Attribute(!!"skipped").Value |> Convert.ToInt32
-        invalid = tr.Attribute(!!"invalid").Value |> Convert.ToInt32
+        total = tr.Attribute(!!"total").Value |> getInt culture
+        errors = tr.Attribute(!!"errors").Value |> getInt culture
+        failures = tr.Attribute(!!"failures").Value |> getInt culture
+        notrun = tr.Attribute(!!"not-run").Value |> getInt culture 
+        inconclusive = tr.Attribute(!!"inconclusive").Value |> getInt culture
+        ignored = tr.Attribute(!!"ignored").Value |> getInt culture
+        skipped = tr.Attribute(!!"skipped").Value |> getInt culture
+        invalid = tr.Attribute(!!"invalid").Value |> getInt culture
         datetime = String.concat " " [tr.Attribute(!!"date").Value;tr.Attribute(!!"time").Value] |> DateTime.Parse
     }
 
@@ -66,37 +88,21 @@ let GetEnvironment (xDoc : XDocument) =
 let CreateEnvironment environment =
     XElement.Parse (sprintf "<environment nunit-version=\"%s\" clr-version=\"%s\" os-version=\"%s\" platform=\"%s\" cwd=\"%s\" machine-name=\"%s\" user=\"%s\" user-domain=\"%s\" />" environment.nunitversion environment.clrversion environment.osversion environment.platform environment.cwd environment.machinename environment.user environment.userdomain)
 
-type culture =
-    {
-        currentculture : string
-        currentuiculture : string
-    }
-
-let GetCulture (xDoc : XDocument) =
-    let culture = xDoc.Element(!!"test-results").Element(!!"culture-info")
-    {
-        currentculture = culture.Attribute(!!"current-culture").Value
-        currentuiculture = culture.Attribute(!!"current-uiculture").Value
-    }
-
-let CreateCulture culture =
-    XElement.Parse (sprintf "<culture-info current-culture=\"%s\" current-uiculture=\"%s\" />" culture.currentculture culture.currentuiculture)
-
-let FoldAssemblyToProjectTuple agg (assembly : XElement) =
+let FoldAssemblyToProjectTuple culture agg (assembly : XElement) =
     let result, time, asserts = agg
     let outResult =
         if assembly.Attribute(!!"result").Value = "Failure" then "Failure" 
         elif assembly.Attribute(!!"result").Value = "Inconclusive" && result = "Success" then "Inconclusive"
         else result
-    (outResult, time + Convert.ToDouble (assembly.Attribute(!!"time").Value), asserts + Convert.ToInt32 (assembly.Attribute(!!"asserts").Value))
+    (outResult, time + getDouble culture (assembly.Attribute(!!"time").Value), asserts + getInt culture (assembly.Attribute(!!"asserts").Value))
     
 
-let TestProjectSummary assemblies =
+let TestProjectSummary culture assemblies =
     assemblies
-    |> Seq.fold FoldAssemblyToProjectTuple ("Success", 0.0, 0)
+    |> Seq.fold (FoldAssemblyToProjectTuple culture) ("Success", 0.0, 0)
 
-let CreateTestProjectNode assemblies =
-    let result, time, asserts = TestProjectSummary assemblies
+let CreateTestProjectNode culture assemblies =
+    let result, time, asserts = TestProjectSummary culture assemblies
     let projectEl = XElement.Parse (sprintf "<test-suite type=\"Test Project\" name=\"\" executed=\"True\" result=\"%s\" time=\"%f\" asserts=\"%d\" />" result time asserts)
     let results = XElement.Parse ("<results/>")
     results.Add (assemblies |> Seq.toArray)
@@ -127,17 +133,20 @@ let GetXDocs directory filter =
 let Folder state xDoc =
     let summary, environment, culture, assemblies = state
     // Sanity check!
-    if environment <> (GetEnvironment xDoc) || culture <> (GetCulture xDoc) then printf "Unmatched environment and/or cultures detected: some of theses results files are not from the same test run."
-    (MergeTestSummary (GetTestSummary xDoc) summary, environment, culture, Seq.append assemblies (GetTestAssemblies xDoc))
+    let thisCulture = GetCulture xDoc
+    if environment <> (GetEnvironment xDoc) || culture <> thisCulture then printf "Unmatched environment and/or cultures detected: some of theses results files are not from the same test run."
+    (MergeTestSummary (GetTestSummary thisCulture xDoc) summary, environment, culture, Seq.append assemblies (GetTestAssemblies xDoc))
 
 let FoldDocs docs =
-    let state = (Seq.head docs |> GetTestSummary, Seq.head docs |> GetEnvironment, Seq.head docs |> GetCulture, Seq.empty)
+    let first = Seq.head docs
+    let culture = GetCulture first
+    let state = (GetTestSummary culture first, GetEnvironment first, culture, Seq.empty)
     Seq.fold Folder state docs
 
 let CreateMerged state =
     let summary, environment, culture, assemblies = state
     let results = (CreateTestSummaryElement summary)
-    results.Add [CreateEnvironment environment;CreateCulture culture;CreateTestProjectNode assemblies]
+    results.Add [CreateEnvironment environment;CreateCulture culture;CreateTestProjectNode culture assemblies]
     results
 
 let WriteMergedNunitResults (directory, filter, outfile) =
