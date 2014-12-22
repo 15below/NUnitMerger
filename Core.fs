@@ -8,6 +8,12 @@ open System.Xml.Linq
 let inline (!!) arg =
   ( ^a : (static member op_Implicit : ^b -> ^a) arg)
 
+let getInt str =
+    Convert.ToInt32(str, System.Globalization.CultureInfo.InvariantCulture)
+
+let getDouble str =
+    Convert.ToDouble(str, System.Globalization.CultureInfo.InvariantCulture)
+
 type ResultSummary =
     {
         total : int
@@ -24,15 +30,15 @@ type ResultSummary =
 let GetTestSummary (xDoc : XDocument) =
     let tr = xDoc.Element(!!"test-results")
     {
-        total = tr.Attribute(!!"total").Value |> Convert.ToInt32
-        errors = tr.Attribute(!!"errors").Value |> Convert.ToInt32
-        failures = tr.Attribute(!!"failures").Value |> Convert.ToInt32
-        notrun = tr.Attribute(!!"not-run").Value |> Convert.ToInt32 
-        inconclusive = tr.Attribute(!!"inconclusive").Value |> Convert.ToInt32
-        ignored = tr.Attribute(!!"ignored").Value |> Convert.ToInt32
-        skipped = tr.Attribute(!!"skipped").Value |> Convert.ToInt32
-        invalid = tr.Attribute(!!"invalid").Value |> Convert.ToInt32
-        datetime = String.concat " " [tr.Attribute(!!"date").Value;tr.Attribute(!!"time").Value] |> DateTime.Parse
+        total = tr.Attribute(!!"total").Value |> getInt
+        errors = tr.Attribute(!!"errors").Value |> getInt
+        failures = tr.Attribute(!!"failures").Value |> getInt
+        notrun = tr.Attribute(!!"not-run").Value |> getInt 
+        inconclusive = tr.Attribute(!!"inconclusive").Value |> getInt
+        ignored = tr.Attribute(!!"ignored").Value |> getInt
+        skipped = tr.Attribute(!!"skipped").Value |> getInt
+        invalid = tr.Attribute(!!"invalid").Value |> getInt
+        datetime = String.concat " " [tr.Attribute(!!"date").Value;tr.Attribute(!!"time").Value] |> (fun s -> DateTime.Parse(s, System.Globalization.CultureInfo.InvariantCulture))
     }
 
 let CreateTestSummaryElement summary =
@@ -88,7 +94,7 @@ let FoldAssemblyToProjectTuple agg (assembly : XElement) =
         if assembly.Attribute(!!"result").Value = "Failure" then "Failure" 
         elif assembly.Attribute(!!"result").Value = "Inconclusive" && result = "Success" then "Inconclusive"
         else result
-    (outResult, time + Convert.ToDouble (assembly.Attribute(!!"time").Value), asserts + Convert.ToInt32 (assembly.Attribute(!!"asserts").Value))
+    (outResult, time + getDouble (assembly.Attribute(!!"time").Value), asserts + getInt (assembly.Attribute(!!"asserts").Value))
     
 
 let TestProjectSummary assemblies =
